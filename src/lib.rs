@@ -138,7 +138,7 @@ fn match_MemPerm(mem_perm: MemPerm) -> u64 {
 	}
 }
 
-impl VirtualCpu {
+impl<'a, T> VirtualCpu<'a, T> {
 	/// Destroys the VirtualCpu instance associated with the current thread
 	pub fn destroy(&self) -> Result<(), Error> {
 		match_error_code(unsafe { hv_vcpu_destroy(self.get_handle()) })

@@ -1,9 +1,9 @@
 pub mod ffi;
 
 use self::ffi::*;
-use crate::{match_MemPerm, match_error_code, Error, MemPerm};
+use crate::{Error, MemPerm, match_MemPerm, match_error_code};
 use libc::*;
-use std::ptr::null_mut;
+use std::{marker::PhantomData, ptr::null_mut, rc::Rc};
 
 /// Creates a VM instance for the current Mach task
 pub fn create_vm() -> Result<(), Error> {
@@ -118,7 +118,8 @@ impl From<hv_vcpu_exit_t> for VirtualCpuExitReason {
 }
 
 /// Virtual CPU
-pub struct VirtualCpu {
+#[derive(Clone)]
+pub struct VirtualCpu<'a, T> {
 	/// Virtual CPU Id
 	id: u32,
 
@@ -127,6 +128,10 @@ pub struct VirtualCpu {
 
 	/// VirtualCPU exit informations.
 	vcpu_exit: *const hv_vcpu_exit_t,
+
+	until: u64,
+
+	_marker: PhantomData<&'a T>,
 }
 
 /// aarch64 architectural register
@@ -746,11 +751,30 @@ impl From<SystemRegister> for hv_sys_reg_t {
 	}
 }
 
-impl VirtualCpu {
+pub type HypervitorContext = Rc<HypervitorContextInner>;
+
+#[derive(Clone)]
+pub struct HypervitorContextInner {
+	inner_context: *mut c_void,
+}
+
+impl HypervitorContextInner {
+	pub fn destroy(&self) {
+		unimplemented!();
+	}
+}
+
+impl Drop for HypervitorContextInner {
+	fn drop(&mut self) {
+		self.destroy();
+	}
+}
+
+impl<'a, T> VirtualCpu<'a, T> {
 	/// Creates a VirtualCpu instance for the current thread
 	///
 	/// `id` represents the internal numbering of the processor.
-	pub fn new(id: u32) -> Result<VirtualCpu, Error> {
+	pub fn new(id: u32) -> Result<Self, Error> {
 		let handle: hv_vcpu_config_t = core::ptr::null_mut();
 		let mut vcpu_handle: hv_vcpu_t = 0;
 		let mut vcpu_exit: *const hv_vcpu_exit_t = core::ptr::null_mut();
@@ -761,11 +785,22 @@ impl VirtualCpu {
 			id,
 			vcpu_handle,
 			vcpu_exit,
+			until: 0,
+			_marker: std::marker::PhantomData,
 		};
 
 		vcpu.write_system_register(SystemRegister::MPIDR_EL1, (id & 0xff).into())?;
 
 		Ok(vcpu)
+	}
+
+	pub fn emu_start(&self, pc: u64, until: u64) {
+		// let cpsr = PSR_D_BIT | PSR_A_BIT | PSR_I_BIT | PSR_F_BIT | PSR_MODE_EL0t;
+		// self.write_register(HV_REG_CPSR,cpsr);
+		// self.write_register(HV_REG_PC,pc);
+		// self.until = until + 4;
+		// self.run().unwrap();
+		unimplemented!();
 	}
 
 	pub fn get_id(&self) -> u32 {
@@ -836,7 +871,7 @@ impl VirtualCpu {
 	}
 }
 
-impl core::fmt::Debug for VirtualCpu {
+impl<'a, T> core::fmt::Debug for VirtualCpu<'a, T> {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		let pc = self.read_register(Register::PC).unwrap();
 		let cpsr = self.read_register(Register::CPSR).unwrap();

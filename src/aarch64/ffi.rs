@@ -899,3 +899,9 @@ extern "C" {
 	/// Sets the virtual timer offset.
 	pub fn hv_vcpu_set_vtimer_offset(vcpu: hv_vcpu_t, vtimer_offset: u64) -> hv_return_t;
 }
+
+pub(crate) const PSR_F_BIT: u32 = 0x00000040;
+pub(crate) const PSR_I_BIT: u32 = 0x00000080;
+pub(crate) const PSR_A_BIT: u32 = 0x00000100;
+pub(crate) const PSR_D_BIT: u32 = 0x00000200;
+pub(crate) const PSR_MODE_EL0t: u32 = 0x00000000;
