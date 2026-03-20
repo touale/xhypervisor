@@ -1,7 +1,7 @@
 pub mod ffi;
 
 use self::ffi::*;
-use crate::{Error, MemPerm, match_MemPerm, match_error_code};
+use crate::{match_MemPerm, match_error_code, Error, MemPerm};
 use libc::*;
 use std::{marker::PhantomData, ptr::null_mut, rc::Rc};
 
